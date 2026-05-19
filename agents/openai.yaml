@@ -1,0 +1,3 @@
+display_name: 半导体池每日更新
+short_description: 生成半导体公司池日报、HTML附件和邮件投递
+default_prompt: 更新今天半导体公司池，生成HTML并发送邮箱
