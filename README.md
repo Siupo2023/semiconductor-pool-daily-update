@@ -30,7 +30,7 @@ This skill:
 Clone the repo:
 
 ```bash
-git clone git@github.com:Siupo2023/semiconductor-pool-daily-update.git
+git clone https://github.com/Siupo2023/semiconductor-pool-daily-update.git
 cd semiconductor-pool-daily-update
 ```
 
@@ -45,6 +45,12 @@ Run the workflow:
 
 ```bash
 bash scripts/semiconductor_daily_update.sh
+```
+
+Install the skill into the default OpenClaw skills directory:
+
+```bash
+bash install.sh
 ```
 
 ## SMTP Config
@@ -65,10 +71,22 @@ Do not commit real credentials.
 
 ## OpenClaw Install
 
-One simple way is to clone the repo directly into the local skills directory:
+Use the installer:
 
 ```bash
-git clone git@github.com:Siupo2023/semiconductor-pool-daily-update.git \
+bash install.sh
+```
+
+Or install to a custom skills root:
+
+```bash
+bash install.sh --target-root "$HOME/.openclaw/skills"
+```
+
+Or clone the repo directly into the local skills directory:
+
+```bash
+git clone https://github.com/Siupo2023/semiconductor-pool-daily-update.git \
   "$HOME/.openclaw/skills/semiconductor-pool-daily-update"
 ```
 
