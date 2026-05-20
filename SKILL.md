@@ -21,10 +21,12 @@ metadata:
 This skill runs the semiconductor watchlist workflow as a portable CLI task:
 
 1. Read the local Wiki context and semiconductor review rules.
-2. Use Codex with web search to fetch current A-share data, announcements, dragon-tiger list data, and U.S. peer movement.
-3. Write the daily Markdown report into `wiki/`.
-4. Convert the report to HTML.
-5. Email the HTML report as an attachment.
+2. Use Codex with web search to read the market backdrop: U.S. indices, semiconductor peers, rates, FX, A-share indices, and sector rotation.
+3. Fetch current A-share data, announcements, dragon-tiger list data, and U.S. peer movement for the watchlist.
+4. Explain the chain from macro backdrop to sector strength to individual stock validation.
+5. Write the daily Markdown report into `wiki/`.
+6. Convert the report to HTML.
+7. Email the HTML report as an attachment.
 
 It is intended for OpenClaw, Codex, or similar local CLI agents.
 
@@ -117,3 +119,12 @@ Each run should produce:
 - A short final summary from Codex noting the core conclusion, file paths, and risk points.
 
 Reports must mark the exact data date/time and separate strong evidence from weak or unverified signals.
+
+Each report must first answer the market-level question: why should the semiconductor pool be strong, weak, or divergent today?
+
+The required top-level logic is:
+
+- Macro backdrop: U.S. market, A-share indices, rates, dollar, and risk appetite.
+- Sector rotation: semiconductor, storage, PCB, optical module/CPO, equipment, materials, and adjacent hot sectors.
+- Watchlist validation: which companies are moving with the sector and which have company-specific evidence.
+- Three-grade conclusion: macro tailwind/headwind/neutral, sector tailwind/headwind/neutral, and stock-level validation strong/weak/pending.

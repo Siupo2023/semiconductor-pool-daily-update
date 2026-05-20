@@ -5,6 +5,8 @@ A portable OpenClaw/Codex skill for the daily China semiconductor watchlist work
 This skill:
 
 - reads local Wiki context and daily review rules
+- explains the macro and market backdrop before reviewing the watchlist
+- compares U.S. market movement, A-share indices, sector rotation, rates, and risk appetite
 - fetches the latest A-share and U.S. peer data through Codex web search
 - writes a Markdown daily report into your Wiki
 - renders the report to HTML
@@ -24,6 +26,21 @@ This skill:
 - `pandoc`
 - `python3`
 - SMTP credentials for outbound email
+
+## Report Logic
+
+The report is designed to answer one practical question first:
+
+> Why should the semiconductor pool be strong, weak, or divergent today?
+
+Each run should cover:
+
+- U.S. market backdrop: Nasdaq, S&P 500, Philadelphia Semiconductor Index, key semiconductor peers, rates, dollar, and risk appetite
+- A-share market backdrop: major indices, Science and Technology 50, sector gainers/losers, and market style
+- Semiconductor branches: storage, PCB, optical module/CPO, equipment, materials, chip design, consumer electronics
+- Watchlist validation: company announcements, earnings, research, dragon-tiger list, capital flow, and overseas peer mapping
+- Three-grade conclusion: macro tailwind/headwind/neutral, sector tailwind/headwind/neutral, and stock-level validation strong/weak/pending
+- One-line strategy: whether the current setup is more suited to chasing strength, buying dips, observing, or reducing risk
 
 ## Quick Start
 
