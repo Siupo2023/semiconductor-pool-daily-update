@@ -117,8 +117,34 @@ bash "$HOME/.openclaw/skills/semiconductor-pool-daily-update/scripts/semiconduct
 
 The recommended approach is to schedule the shell script, not to rely on the model to remember the task.
 
-Example cron entry:
+Current preferred mode is:
 
-```cron
-40 6 * * 1-5 /bin/bash /path/to/semiconductor-pool-daily-update/scripts/semiconductor_daily_update.sh
+- full report after the U.S. market closes, using the latest U.S. close plus the previous A-share session
+- Monday morning weekend catch-up, to cover weekend announcements before the next A-share session
+
+Because Beijing time shifts with U.S. daylight saving time, do not hardcode a single local time. Instead, schedule more than one local trigger and let the script self-skip outside the valid window.
+
+Suggested local trigger points:
+
+- `04:12` every day
+- `05:12` every day
+- `06:45` every Monday
+
+Set these environment variables in the scheduler:
+
+```bash
+SEMI_ENFORCE_SCHEDULE_WINDOW=1
+SEMI_SCHEDULE_MODE=after_us_close_full
+```
+
+With that mode enabled, the script will:
+
+- run after U.S. market close when the New York local time is in the `16:05-17:30` window
+- run once on Monday morning Beijing time as a weekend catch-up
+- skip all other scheduler invocations
+
+See the launchd template:
+
+```text
+references/launchd/ai.openclaw.semiconductor-afterclose.plist.example
 ```

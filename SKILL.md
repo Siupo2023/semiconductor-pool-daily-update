@@ -70,28 +70,32 @@ If a page is missing, the agent should still continue, but must say which contex
 
 For OpenClaw or local automation, schedule the script rather than asking the model to remember the task.
 
-macOS `launchd` example:
+Preferred production mode:
 
-```xml
-<key>ProgramArguments</key>
-<array>
-  <string>/bin/bash</string>
-  <string>/path/to/semiconductor-pool-daily-update/scripts/semiconductor_daily_update.sh</string>
-</array>
-<key>StartCalendarInterval</key>
-<dict>
-  <key>Hour</key>
-  <integer>6</integer>
-  <key>Minute</key>
-  <integer>40</integer>
-</dict>
+- send the full report as soon as the U.S. market has formally closed
+- add one Monday morning Beijing-time catch-up run for weekend announcements
+
+Because Beijing time shifts with U.S. daylight saving time, the scheduler should trigger multiple local times and let the script self-skip when the window is wrong.
+
+Enable scheduler-only gating with:
+
+```bash
+SEMI_ENFORCE_SCHEDULE_WINDOW=1
+SEMI_SCHEDULE_MODE=after_us_close_full
 ```
 
-Cron example:
+When that mode is enabled, the script runs only when one of these conditions is true:
 
-```cron
-40 6 * * 1-5 /path/to/semiconductor-pool-daily-update/scripts/semiconductor_daily_update.sh
+- New York local time is between `16:05` and `17:30` on a weekday
+- Beijing local time is Monday between `06:30` and `08:30` for weekend catch-up
+
+See the example template:
+
+```text
+references/launchd/ai.openclaw.semiconductor-afterclose.plist.example
 ```
+
+Manual runs are still allowed at any time because the schedule gate is opt-in through environment variables.
 
 ## Email Configuration
 

@@ -13,12 +13,16 @@ EMAIL_ENV="${SEMI_EMAIL_ENV:-$HOME/.openclaw/skills/news-aggregator-skill/.env}"
 LOG_FILE="${SEMI_LOG_FILE:-$HOME/.openclaw/logs/semiconductor-daily-update.log}"
 END_DATE="${SEMI_END_DATE:-}"
 SKIP_WEEKENDS="${SEMI_SKIP_WEEKENDS:-1}"
+CODEX_TIMEOUT_SECONDS="${SEMI_CODEX_TIMEOUT_SECONDS:-1500}"
+ENFORCE_SCHEDULE_WINDOW="${SEMI_ENFORCE_SCHEDULE_WINDOW:-0}"
+SCHEDULE_MODE="${SEMI_SCHEDULE_MODE:-default}"
 TODAY_ISO="${SEMI_DATE:-$(date '+%Y-%m-%d')}"
 TODAY_YYMMDD="$(date -j -f '%Y-%m-%d' "$TODAY_ISO" '+%y%m%d' 2>/dev/null || date '+%y%m%d')"
 SUMMARY_FILE="${SEMI_SUMMARY_FILE:-/tmp/semiconductor-daily-summary-${TODAY_ISO}.txt}"
 PROMPT_FILE="${SEMI_PROMPT_FILE:-/tmp/semiconductor-daily-prompt-${TODAY_ISO}.md}"
 DAILY_WIKI_FILE="$WIKI_ROOT/wiki/${TODAY_YYMMDD}-半导体公司池每日更新.md"
 DAILY_HTML_FILE="$WIKI_ROOT/wiki/${TODAY_YYMMDD}-半导体公司池每日更新.html"
+LOCK_DIR="${SEMI_LOCK_DIR:-/tmp/semiconductor-daily-update.lock}"
 
 mkdir -p "$(dirname "$LOG_FILE")"
 
@@ -100,6 +104,26 @@ require_bin codex
 require_bin pandoc
 require_bin python3
 
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+  log "skip because lock exists at ${LOCK_DIR}"
+  send_email \
+    "${TODAY_ISO} 半导体池自动更新未执行" \
+    "半导体池自动更新未执行，因为发现已有运行中的锁目录：${LOCK_DIR}
+
+日期：${TODAY_ISO}
+日志：${LOG_FILE}
+
+请检查是否有前一轮任务卡住。" \
+    ""
+  exit 1
+fi
+
+cleanup() {
+  rm -rf "$LOCK_DIR"
+}
+
+trap cleanup EXIT
+
 if [[ -n "$END_DATE" && "$TODAY_ISO" > "$END_DATE" ]]; then
   log "skip after end date ${END_DATE}"
   exit 0
@@ -110,6 +134,25 @@ if [[ "$SKIP_WEEKENDS" == "1" && "$(date '+%u')" -gt 5 ]]; then
   exit 0
 fi
 
+if [[ "$ENFORCE_SCHEDULE_WINDOW" == "1" && "$SCHEDULE_MODE" == "after_us_close_full" ]]; then
+  NY_HM="$(TZ=America/New_York date '+%H%M')"
+  NY_WDAY="$(TZ=America/New_York date '+%u')"
+  LOCAL_HM="$(date '+%H%M')"
+  LOCAL_WDAY="$(date '+%u')"
+  TRIGGER_REASON=""
+
+  if [[ "$NY_WDAY" -le 5 && "$NY_HM" -ge 1605 && "$NY_HM" -le 1730 ]]; then
+    TRIGGER_REASON="us_close_window"
+  elif [[ "$LOCAL_WDAY" == "1" && "$LOCAL_HM" -ge 0630 && "$LOCAL_HM" -le 0830 ]]; then
+    TRIGGER_REASON="monday_weekend_catchup"
+  else
+    log "skip outside schedule window: local=${LOCAL_WDAY}/${LOCAL_HM} ny=${NY_WDAY}/${NY_HM} mode=${SCHEDULE_MODE}"
+    exit 0
+  fi
+
+  log "schedule window matched: ${TRIGGER_REASON} local=${LOCAL_WDAY}/${LOCAL_HM} ny=${NY_WDAY}/${NY_HM}"
+fi
+
 sed \
   -e "s|{{WIKI_ROOT}}|${WIKI_ROOT}|g" \
   -e "s|{{TODAY_ISO}}|${TODAY_ISO}|g" \
@@ -118,30 +161,105 @@ sed \
 
 log "start codex run"
 
-codex --search -a never exec \
-  --ignore-user-config \
-  --ignore-rules \
-  --ephemeral \
-  -c 'notify=[]' \
-  -c 'plugins."browser@openai-bundled".enabled=false' \
-  -c 'plugins."computer-use@openai-bundled".enabled=false' \
-  -c 'plugins."chrome@openai-bundled".enabled=false' \
-  -c 'plugins."documents@openai-primary-runtime".enabled=false' \
-  -c 'plugins."spreadsheets@openai-primary-runtime".enabled=false' \
-  -c 'plugins."presentations@openai-primary-runtime".enabled=false' \
-  -c 'plugins."zotero@openai-curated".enabled=false' \
-  -c 'plugins."morningstar@openai-curated".enabled=false' \
-  -c 'plugins."mt-newswires@openai-curated".enabled=false' \
-  -c 'plugins."alpaca@openai-curated".enabled=false' \
-  -c 'plugins."dow-jones-factiva@openai-curated".enabled=false' \
-  -c 'plugins."gmail@openai-curated".enabled=false' \
-  -c 'plugins."google-drive@openai-curated".enabled=false' \
-  -C "$WIKI_ROOT" \
-  -s danger-full-access \
-  --output-last-message "$SUMMARY_FILE" \
-  "$(cat "$PROMPT_FILE")" >> "$LOG_FILE" 2>&1
+python3 - "$LOG_FILE" "$WIKI_ROOT" "$SUMMARY_FILE" "$PROMPT_FILE" "$CODEX_TIMEOUT_SECONDS" <<'PY'
+import subprocess
+import sys
+from pathlib import Path
+
+log_file, wiki_root, summary_file, prompt_file, timeout_seconds = sys.argv[1:6]
+prompt = Path(prompt_file).read_text(encoding="utf-8")
+
+cmd = [
+    "codex",
+    "--search",
+    "-a",
+    "never",
+    "exec",
+    "--ignore-user-config",
+    "--ignore-rules",
+    "--ephemeral",
+    "-c",
+    "notify=[]",
+    "-c",
+    'plugins."browser@openai-bundled".enabled=false',
+    "-c",
+    'plugins."computer-use@openai-bundled".enabled=false',
+    "-c",
+    'plugins."chrome@openai-bundled".enabled=false',
+    "-c",
+    'plugins."documents@openai-primary-runtime".enabled=false',
+    "-c",
+    'plugins."spreadsheets@openai-primary-runtime".enabled=false',
+    "-c",
+    'plugins."presentations@openai-primary-runtime".enabled=false',
+    "-c",
+    'plugins."zotero@openai-curated".enabled=false',
+    "-c",
+    'plugins."morningstar@openai-curated".enabled=false',
+    "-c",
+    'plugins."mt-newswires@openai-curated".enabled=false',
+    "-c",
+    'plugins."alpaca@openai-curated".enabled=false',
+    "-c",
+    'plugins."dow-jones-factiva@openai-curated".enabled=false',
+    "-c",
+    'plugins."gmail@openai-curated".enabled=false',
+    "-c",
+    'plugins."google-drive@openai-curated".enabled=false',
+    "-C",
+    wiki_root,
+    "-s",
+    "danger-full-access",
+    "--output-last-message",
+    summary_file,
+    prompt,
+]
+
+with open(log_file, "a", encoding="utf-8") as log:
+    try:
+        completed = subprocess.run(
+            cmd,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=int(timeout_seconds),
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        log.write(f"\n[watchdog] codex timed out after {timeout_seconds} seconds\n")
+        sys.exit(124)
+
+sys.exit(completed.returncode)
+PY
+
+CODEX_EXIT=$?
+
+if [[ "$CODEX_EXIT" -ne 0 ]]; then
+  log "codex run failed with exit code ${CODEX_EXIT}"
+  send_email \
+    "${TODAY_ISO} 半导体池自动更新失败" \
+    "半导体池自动更新未成功完成。
+
+日期：${TODAY_ISO}
+退出码：${CODEX_EXIT}
+预期主稿：${DAILY_WIKI_FILE}
+日志：${LOG_FILE}
+
+如果退出码是 124，表示 codex 在 ${CODEX_TIMEOUT_SECONDS} 秒内没有完成，已被看门狗终止。" \
+    ""
+  exit "$CODEX_EXIT"
+fi
 
 if [[ ! -f "$DAILY_WIKI_FILE" ]]; then
+  log "expected report was not created: ${DAILY_WIKI_FILE}"
+  send_email \
+    "${TODAY_ISO} 半导体池自动更新失败" \
+    "半导体池自动更新已执行完 codex，但未发现预期主稿。
+
+日期：${TODAY_ISO}
+预期主稿：${DAILY_WIKI_FILE}
+日志：${LOG_FILE}" \
+    ""
   echo "expected report was not created: $DAILY_WIKI_FILE" >&2
   exit 1
 fi
