@@ -143,8 +143,12 @@ if [[ "$ENFORCE_SCHEDULE_WINDOW" == "1" && "$SCHEDULE_MODE" == "after_us_close_f
 
   if [[ "$NY_WDAY" -le 5 && "$NY_HM" -ge 1605 && "$NY_HM" -le 1730 ]]; then
     TRIGGER_REASON="us_close_window"
-  elif [[ "$LOCAL_WDAY" == "1" && "$LOCAL_HM" -ge 0630 && "$LOCAL_HM" -le 0830 ]]; then
-    TRIGGER_REASON="monday_weekend_catchup"
+  elif [[ "$LOCAL_WDAY" -le 5 && "$LOCAL_HM" -ge 0630 && "$LOCAL_HM" -le 0830 ]]; then
+    if [[ "$LOCAL_WDAY" == "1" ]]; then
+      TRIGGER_REASON="monday_weekend_catchup"
+    else
+      TRIGGER_REASON="weekday_morning_supplement"
+    fi
   else
     log "skip outside schedule window: local=${LOCAL_WDAY}/${LOCAL_HM} ny=${NY_WDAY}/${NY_HM} mode=${SCHEDULE_MODE}"
     exit 0
