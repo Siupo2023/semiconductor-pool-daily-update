@@ -139,11 +139,13 @@ if [[ "$ENFORCE_SCHEDULE_WINDOW" == "1" && "$SCHEDULE_MODE" == "after_us_close_f
   NY_WDAY="$(TZ=America/New_York date '+%u')"
   LOCAL_HM="$(date '+%H%M')"
   LOCAL_WDAY="$(date '+%u')"
+  NY_HM_NUM=$((10#$NY_HM))
+  LOCAL_HM_NUM=$((10#$LOCAL_HM))
   TRIGGER_REASON=""
 
-  if [[ "$NY_WDAY" -le 5 && "$NY_HM" -ge 1605 && "$NY_HM" -le 1730 ]]; then
+  if [[ "$NY_WDAY" -le 5 && "$NY_HM_NUM" -ge 1605 && "$NY_HM_NUM" -le 1730 ]]; then
     TRIGGER_REASON="us_close_window"
-  elif [[ "$LOCAL_WDAY" -le 5 && "$LOCAL_HM" -ge 0630 && "$LOCAL_HM" -le 0830 ]]; then
+  elif [[ "$LOCAL_WDAY" -le 5 && "$LOCAL_HM_NUM" -ge 630 && "$LOCAL_HM_NUM" -le 830 ]]; then
     if [[ "$LOCAL_WDAY" == "1" ]]; then
       TRIGGER_REASON="monday_weekend_catchup"
     else
