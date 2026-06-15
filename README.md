@@ -27,6 +27,8 @@ This skill:
 - `python3`
 - SMTP credentials for outbound email
 
+This repository is designed to work on both macOS and Linux. On Ubuntu, the only scheduler-specific change is that you should use `systemd --user` or `cron` instead of `launchd`.
+
 ## Report Logic
 
 The report is designed to answer one practical question first:
@@ -63,6 +65,54 @@ Run the workflow:
 ```bash
 bash scripts/semiconductor_daily_update.sh
 ```
+
+## Ubuntu Cloud VM
+
+On an Ubuntu cloud machine, the clean path is:
+
+1. Install the runtime dependencies:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y pandoc python3 python3-venv ca-certificates
+```
+
+2. Install and authenticate the Codex CLI in whatever way you normally use on that machine.
+
+3. Clone both repositories:
+
+```bash
+git clone https://github.com/Siupo2023/llm-wiki.git "$HOME/llm-wiki"
+git clone https://github.com/Siupo2023/semiconductor-pool-daily-update.git "$HOME/semiconductor-pool-daily-update"
+```
+
+4. Create an SMTP env file, for example:
+
+```bash
+mkdir -p "$HOME/.config/semiconductor-pool-daily-update"
+cat > "$HOME/.config/semiconductor-pool-daily-update/email.env" <<'EOF'
+SMTP_SERVER=smtp.qq.com
+SMTP_PORT=587
+SMTP_USER=your_email@example.com
+SMTP_PASSWORD=your_smtp_authorization_code
+DEFAULT_EMAIL=recipient@example.com
+EOF
+```
+
+5. Point the workflow at the Ubuntu paths:
+
+```bash
+export SEMI_WIKI_ROOT="$HOME/llm-wiki"
+export SEMI_EMAIL_ENV="$HOME/.config/semiconductor-pool-daily-update/email.env"
+```
+
+6. Run a smoke test:
+
+```bash
+bash "$HOME/semiconductor-pool-daily-update/scripts/semiconductor_daily_update.sh"
+```
+
+If you want the Ubuntu VM to produce the same report structure as your current Mac setup, keep the Wiki root at `~/llm-wiki` and reuse the same stock-pool rules file inside that repository.
 
 Install the skill into the default OpenClaw skills directory:
 
@@ -147,4 +197,31 @@ See the launchd template:
 
 ```text
 references/launchd/ai.openclaw.semiconductor-afterclose.plist.example
+```
+
+For Ubuntu, use the `systemd --user` examples:
+
+```text
+references/systemd/semiconductor-daily-update.service.example
+references/systemd/semiconductor-daily-update.timer.example
+```
+
+Install them like this:
+
+```bash
+mkdir -p "$HOME/.config/systemd/user"
+cp references/systemd/semiconductor-daily-update.service.example \
+  "$HOME/.config/systemd/user/semiconductor-daily-update.service"
+cp references/systemd/semiconductor-daily-update.timer.example \
+  "$HOME/.config/systemd/user/semiconductor-daily-update.timer"
+
+systemctl --user daemon-reload
+systemctl --user enable --now semiconductor-daily-update.timer
+systemctl --user status semiconductor-daily-update.timer
+```
+
+If your cloud VM should keep user timers alive after logout, enable lingering once:
+
+```bash
+loginctl enable-linger "$USER"
 ```

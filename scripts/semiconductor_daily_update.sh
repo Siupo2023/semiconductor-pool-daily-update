@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-export PATH="/Applications/Codex.app/Contents/Resources:$HOME/.npm-global/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+export PATH="$HOME/.local/bin:$HOME/.npm-global/bin:$HOME/.npm/bin:/Applications/Codex.app/Contents/Resources:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin${PATH:+:$PATH}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -17,7 +17,20 @@ CODEX_TIMEOUT_SECONDS="${SEMI_CODEX_TIMEOUT_SECONDS:-1500}"
 ENFORCE_SCHEDULE_WINDOW="${SEMI_ENFORCE_SCHEDULE_WINDOW:-0}"
 SCHEDULE_MODE="${SEMI_SCHEDULE_MODE:-default}"
 TODAY_ISO="${SEMI_DATE:-$(date '+%Y-%m-%d')}"
-TODAY_YYMMDD="$(date -j -f '%Y-%m-%d' "$TODAY_ISO" '+%y%m%d' 2>/dev/null || date '+%y%m%d')"
+TODAY_YYMMDD="$(
+  python3 - "$TODAY_ISO" <<'PY'
+from datetime import datetime
+import sys
+print(datetime.strptime(sys.argv[1], "%Y-%m-%d").strftime("%y%m%d"))
+PY
+)"
+TODAY_WEEKDAY="$(
+  python3 - "$TODAY_ISO" <<'PY'
+from datetime import datetime
+import sys
+print(datetime.strptime(sys.argv[1], "%Y-%m-%d").isoweekday())
+PY
+)"
 SUMMARY_FILE="${SEMI_SUMMARY_FILE:-/tmp/semiconductor-daily-summary-${TODAY_ISO}.txt}"
 PROMPT_FILE="${SEMI_PROMPT_FILE:-/tmp/semiconductor-daily-prompt-${TODAY_ISO}.md}"
 DAILY_WIKI_FILE="$WIKI_ROOT/wiki/${TODAY_YYMMDD}-半导体公司池每日更新.md"
@@ -129,7 +142,7 @@ if [[ -n "$END_DATE" && "$TODAY_ISO" > "$END_DATE" ]]; then
   exit 0
 fi
 
-if [[ "$SKIP_WEEKENDS" == "1" && "$(date '+%u')" -gt 5 ]]; then
+if [[ "$SKIP_WEEKENDS" == "1" && "$TODAY_WEEKDAY" -gt 5 ]]; then
   log "skip weekend"
   exit 0
 fi

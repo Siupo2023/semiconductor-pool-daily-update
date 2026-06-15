@@ -1,0 +1,13 @@
+[Unit]
+Description=Semiconductor pool daily update
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/llm-wiki
+Environment=SEMI_WIKI_ROOT=%h/llm-wiki
+Environment=SEMI_EMAIL_ENV=%h/.config/semiconductor-pool-daily-update/email.env
+Environment=SEMI_LOG_FILE=%h/.local/state/semiconductor-daily-update.log
+Environment=SEMI_ENFORCE_SCHEDULE_WINDOW=1
+Environment=SEMI_SCHEDULE_MODE=after_us_close_full
+ExecStart=%h/semiconductor-pool-daily-update/scripts/semiconductor_daily_update.sh
+
