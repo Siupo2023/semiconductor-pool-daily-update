@@ -4,10 +4,9 @@ Description=Run semiconductor daily update on the local schedule grid
 [Timer]
 OnCalendar=*-*-* 04:12:00
 OnCalendar=*-*-* 05:12:00
-OnCalendar=Mon *-*-* 06:45:00
+OnCalendar=Mon..Fri *-*-* 06:45:00
 Persistent=true
 Unit=semiconductor-daily-update.service
 
 [Install]
 WantedBy=timers.target
-
